@@ -1,30 +1,55 @@
-# Construit Ziggy-Setup.exe sur un Windows 11/Server GRATUIT de GitHub, sans rien installer chez toi.
-# Utilisation : onglet « Actions » > « Construire Ziggy-Setup.exe » > « Run workflow » ; l'installateur est dans « Artifacts ».
+
+# Construit Ziggy-Setup.exe sur Windows via GitHub Actions
 name: Construire Ziggy-Setup.exe
+
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
+
 jobs:
   windows:
     runs-on: windows-latest
+
     env:
       ZIGGY_NOPAUSE: "1"
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Installer Inno Setup
         shell: cmd
         run: choco install innosetup --no-progress -y
-      - name: Tests, compilation et test de fumée
+
+      - name: Tests et compilation
         shell: cmd
         run: build.bat
+
       - name: Créer l'installateur
         shell: cmd
         run: installer.bat
-      - uses: actions/upload-artifact@v4
+
+      - name: Vérifier l'installateur
+        shell: pwsh
+        run: |
+          if (!(Test-Path "installer_output/Ziggy-Setup.exe")) {
+            Write-Error "Ziggy-Setup.exe introuvable dans installer_output"
+            exit 1
+          }
+
+      - name: Publier l'installateur
+        uses: actions/upload-artifact@v4
         with:
           name: Ziggy-Setup
           path: installer_output/Ziggy-Setup.exe
+          if-no-files-found: error
+
